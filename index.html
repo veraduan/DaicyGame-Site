@@ -6,7 +6,6 @@
   <title>你的小游戏 - 着陆页</title>
   <meta name="description" content="你的小游戏的简单介绍着陆页" />
 
-  <!-- 可选：网页基础字体（可自行替换或删除） -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
   <style>
@@ -59,11 +58,7 @@
       background: conic-gradient(from 210deg, #8a7bff, #7de2ff, #ffa7d1, #ffd166, #8a7bff);
       box-shadow: 0 8px 24px rgba(120,120,255,.35);
     }
-    /* 居中后的状态（进入页面时从左移到中间） */
-    .move-center{
-      left:50%;
-      transform: translateX(-50%);
-    }
+    .move-center{ left:50%; transform: translateX(-50%); }
 
     /* 英雄区（大框换成背景图） */
     .hero{
@@ -72,7 +67,6 @@
       overflow:hidden;
     }
     .hero.with-bg{
-      /* 你自己的大背景图：把下面 URL 换成本地路径，例如 images/hero-bg.jpg */
       --hero:url('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1600&auto=format&fit=crop');
       background-image: radial-gradient(800px 400px at 15% 10%, rgba(78,107,255,.25), transparent 60%),
                         radial-gradient(500px 300px at 100% 20%, rgba(255,112,165,.20), transparent 60%),
@@ -81,9 +75,7 @@
       background-position: center;
       border-bottom: 1px solid rgba(255,255,255,.06);
     }
-    .hero .content{
-      max-width: 720px;
-    }
+    .hero .content{ max-width: 720px; }
     .title{font-size: clamp(36px, 6vw, 64px); margin:0 0 14px; line-height:1.05}
     .subtitle{font-size: clamp(16px, 2.4vw, 20px); color:var(--muted); margin:0 0 26px}
     .actions{display:flex; gap:14px}
@@ -97,15 +89,18 @@
     }
     .btn:active{transform:translateY(1px)}
 
-    /* 媒体画廊 */
+    /* 媒体画廊（左静态图 + 右GIF） */
     .gallery{padding:60px 0 90px}
     .gallery h2{margin:0 0 18px; font-size:28px}
     .grid{
       display:grid;
       grid-template-columns: 1.6fr 1fr;
-      grid-template-rows: auto auto;
       gap: var(--gap);
       align-items:stretch;
+    }
+    /* 统一高度：在桌面端看起来对齐，移动端自动堆叠 */
+    .media-h{
+      height: clamp(360px, 52vw, 540px);
     }
     .card{
       background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
@@ -118,11 +113,16 @@
       display:block;
       width:100%; height:100%; object-fit:cover;
     }
-    /* 左侧大图跨两行 */
-    .left{grid-row:1 / span 2}
-    .right-top, .right-bottom{height: 240px}
 
-    /* 页脚 */
+    /* 响应式：小屏改成单列 */
+    @media (max-width: 860px){
+      .grid{ grid-template-columns: 1fr; }
+      .media-h{ height: 300px; }
+    }
+
+    /* 页脚与后续内容保留（不删除） */
+    .section{ padding: 40px 0; border-top:1px solid rgba(255,255,255,.06); }
+    .section h3{ margin:0 0 12px; }
     footer{color:var(--muted); padding:40px 0 70px; text-align:center; font-size:14px}
     a{color:#9fd0ff}
   </style>
@@ -138,7 +138,7 @@
     </div>
   </header>
 
-  <!-- 英雄区：去掉“观看预告片”按钮和右侧视频，整体用背景图 -->
+  <!-- 英雄区 -->
   <section class="hero with-bg">
     <div class="container">
       <div class="content">
@@ -146,28 +146,33 @@
         <p class="subtitle">一句话卖点：写游戏最核心的一句话价值主张（支持多语言、本地化、键鼠与手柄等）。</p>
         <div class="actions">
           <a class="btn" href="#buy">立即购买 / 加愿望单</a>
-          <!-- 已删除：观看预告片按钮 -->
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 媒体画廊：左侧静态图；右上静态图；右下 GIF 动图 -->
+  <!-- 媒体画廊：左侧图片；右侧 GIF -->
   <section class="gallery">
     <div class="container">
       <h2>媒体画廊</h2>
       <div class="grid">
-        <figure class="card left">
-          <img src="https://images.unsplash.com/photo-1501556424050-d4816356b73e?q=80&w=1600&auto=format&fit=crop" alt="左侧主图（请替换为你的图片）">
+        <figure class="card media-h">
+          <!-- 左侧：静态图片（替换为你的图） -->
+          <img src="https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=1600&auto=format&fit=crop" alt="左侧图片（请替换）">
         </figure>
-        <figure class="card right-top">
-          <img src="https://images.unsplash.com/photo-1516541196182-6bdb0516ed27?q=80&w=1200&auto=format&fit=crop" alt="右上图（请替换为你的图片）">
-        </figure>
-        <figure class="card right-bottom">
-          <!-- GIF 动图占位：可替换成本地 GIF 文件，如 images/preview.gif -->
-          <img src="https://media.giphy.com/media/du3J3cXyzhj75IOgvA/giphy.gif" alt="右下动图（请替换为你的 GIF）">
+        <figure class="card media-h">
+          <!-- 右侧：GIF 动图（替换为你的 gif 路径） -->
+          <img src="https://media.giphy.com/media/du3J3cXyzhj75IOgvA/giphy.gif" alt="右侧 GIF（请替换）">
         </figure>
       </div>
+    </div>
+  </section>
+
+  <!-- ✅ 下面的页面内容保留：这里给一个占位的“特性”段落，后续你可以继续改，不会被删除 -->
+  <section class="section">
+    <div class="container">
+      <h3>特性（占位示例）</h3>
+      <p>这里保留为占位内容，方便你后续继续编辑其他板块。你可以添加：关于 / 特性列表 / 媒体素材说明 / 支持平台 / 价格与购买链接 等等。</p>
     </div>
   </section>
 
@@ -178,10 +183,7 @@
   </footer>
 
   <script>
-    // 年份
     document.getElementById('y').textContent = new Date().getFullYear();
-
-    // 进入页面时让 LOGO 从左移动到中间
     window.addEventListener('DOMContentLoaded', function(){
       requestAnimationFrame(function(){
         document.getElementById('logo').classList.add('move-center');
