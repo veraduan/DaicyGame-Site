@@ -1,282 +1,190 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>你的小游戏名称 — 官方网站模板（接近 ONI 风格）</title>
-  <meta name="description" content="你的小游戏一句话简介。" />
+  <title>你的小游戏 - 着陆页</title>
+  <meta name="description" content="你的小游戏的简单介绍着陆页" />
+
+  <!-- 可选：网页基础字体（可自行替换或删除） -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
   <style>
-    /* —— 视觉基调：深底+霓虹边（更接近 Klei/ONI 的感觉，但保留自研实现） —— */
     :root{
-      --bg:#0d0f13;           /* 背景 */
-      --bg-2:#0f1218;         /* 次级背景层 */
-      --card:#10141b;         /* 卡片底色 */
-      --line:rgba(255,255,255,.08);
-      --muted:#97a4b6;        /* 次要文字 */
-      --text:#eaf2ff;         /* 主文字 */
-      --brand:#66e2ff;        /* 品牌主色（青蓝） */
-      --brand-2:#ff6bd6;      /* 品牌辅色（洋红） */
-      --accent:#ffd86b;       /* 按钮强调色（暖黄） */
-      --maxw:1180px;          /* 内容宽度更宽一些 */
-      --radius:18px;          /* 统一圆角 */
-      --shadow:0 10px 28px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.04) inset;
-      --tab-radius:12px;
+      --bg:#0b0f14;
+      --bg2:#121826;
+      --text:#e7edf3;
+      --muted:#9fb3c8;
+      --accent:#ffd166;
+      --accent2:#ff9f1c;
+      --card:#1b2536;
+      --ring:#233043;
+      --shadow: 0 20px 40px rgba(0,0,0,.35);
+      --radius: 16px;
+      --gap: 22px;
+      --maxw: 1120px;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans",sans-serif}
-    img{max-width:100%;display:block}
-    a{color:var(--brand);text-decoration:none}
-    a:hover{opacity:.92}
-    .container{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,Helvetica,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #1a2740 0%, transparent 60%),
+        radial-gradient(900px 600px at 100% 10%, #2b153d 0%, transparent 50%),
+        linear-gradient(180deg,var(--bg),var(--bg2));
+      background-attachment: fixed;
+    }
+    .container{max-width:var(--maxw); margin:0 auto; padding:0 20px}
 
-    /* 顶部导航：半透明、细描边、滚动后加深 */
-    header.site{position:sticky;top:0;z-index:60;backdrop-filter:saturate(1.1) blur(8px);background:linear-gradient(180deg, rgba(13,15,19,.92), rgba(13,15,19,.6));border-bottom:1px solid var(--line)}
-    .site-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
-    .brand{display:flex;gap:12px;align-items:center}
-    .brand .logo{width:36px;height:36px;border-radius:10px;position:relative;background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 10px 24px rgba(102,226,255,.3)}
-    .brand strong{letter-spacing:.4px}
-    nav a{margin:0 12px;color:#f5fbff;opacity:.85;font-weight:600}
-    nav a:hover, nav a.active{opacity:1}
+    /* 顶部栏 */
+    header.top-bar{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(10px);
+      background:linear-gradient(180deg, rgba(5,7,12,.72), rgba(5,7,12,.32));
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .top-inner{display:flex; align-items:center; height:64px; position:relative;}
+    .logo{
+      position:relative;
+      left:0;
+      transform:translateX(0);
+      transition: left 900ms cubic-bezier(.19,1,.22,1), transform 900ms cubic-bezier(.19,1,.22,1);
+      display:flex; align-items:center; gap:12px;
+      font-weight:800; letter-spacing:.5px; font-size:18px;
+    }
+    .logo-badge{
+      width:34px; height:34px; border-radius:12px;
+      background: conic-gradient(from 210deg, #8a7bff, #7de2ff, #ffa7d1, #ffd166, #8a7bff);
+      box-shadow: 0 8px 24px rgba(120,120,255,.35);
+    }
+    /* 居中后的状态（进入页面时从左移到中间） */
+    .move-center{
+      left:50%;
+      transform: translateX(-50%);
+    }
 
-    /* 首屏：左文案右媒体；背景加霓虹放射与颗粒噪点 */
-    .hero{position:relative;isolation:isolate}
-    .hero-bg{position:absolute;inset:0;background:
-      radial-gradient(60% 60% at 20% 10%, rgba(102,226,255,.2), transparent 60%),
-      radial-gradient(50% 50% at 80% 20%, rgba(255,107,214,.18), transparent 60%),
-      linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.0)),
-      var(--bg-2);
-      filter:saturate(1.05) brightness(.95);z-index:-1}
-    .hero-noise{position:absolute;inset:0;opacity:.08;pointer-events:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.8"/></svg>');background-size:240px 240px}
-    .hero .container{padding:92px 24px 56px}
-    .hero-wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
-    .eyebrow{color:var(--brand);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:.78rem}
-    .h1{font-size:clamp(34px,4.2vw,60px);line-height:1.08;margin:.45em 0 .3em;text-shadow:0 10px 34px rgba(0,0,0,.5)}
-    .lead{color:#d9e6f5;font-size:1.08rem;opacity:.95}
-    .cta{display:flex;gap:14px;margin-top:18px;flex-wrap:wrap}
-    .btn{display:inline-block;padding:12px 18px;border-radius:14px;background:var(--accent);color:#1c1300;font-weight:800;box-shadow:var(--shadow);transition:transform .15s ease,filter .15s ease}
-    .btn:hover{transform:translateY(-1px) scale(1.01);filter:saturate(1.08)}
-    .btn.ghost{background:transparent;border:2px solid rgba(255,255,255,.85);color:#fff}
+    /* 英雄区（大框换成背景图） */
+    .hero{
+      position:relative;
+      padding: 120px 0 100px;
+      overflow:hidden;
+    }
+    .hero.with-bg{
+      /* 你自己的大背景图：把下面 URL 换成本地路径，例如 images/hero-bg.jpg */
+      --hero:url('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1600&auto=format&fit=crop');
+      background-image: radial-gradient(800px 400px at 15% 10%, rgba(78,107,255,.25), transparent 60%),
+                        radial-gradient(500px 300px at 100% 20%, rgba(255,112,165,.20), transparent 60%),
+                        var(--hero);
+      background-size: cover;
+      background-position: center;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .hero .content{
+      max-width: 720px;
+    }
+    .title{font-size: clamp(36px, 6vw, 64px); margin:0 0 14px; line-height:1.05}
+    .subtitle{font-size: clamp(16px, 2.4vw, 20px); color:var(--muted); margin:0 0 26px}
+    .actions{display:flex; gap:14px}
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:12px 22px; border-radius:10px; font-weight:600; cursor:pointer;
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow: var(--shadow);
+      text-decoration:none; color:#0a0a0a;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+    .btn:active{transform:translateY(1px)}
 
-    /* Tabs：更靠近 ONI 的 pill 形态，底部有品牌色下划线 */
-    .tabs{margin-top:22px;display:flex;gap:10px;border-bottom:1px solid var(--line)}
-    .tab-btn{appearance:none;background:transparent;border:none;color:#b9c6d6;padding:12px 14px;border-radius:var(--tab-radius) var(--tab-radius) 0 0;font-weight:800;cursor:pointer;position:relative}
-    .tab-btn.active{color:#fff}
-    .tab-btn.active::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:3px;background:linear-gradient(90deg,var(--brand),var(--brand-2))}
-
-    .hero-card{background:rgba(8,10,14,.55);border:1px solid var(--line);padding:16px;border-radius:var(--radius);box-shadow:var(--shadow)}
-    .media{aspect-ratio:16/9;border-radius:var(--radius);overflow:hidden;background:#0b0e13;border:1px solid var(--line)}
-    .media iframe{width:100%;height:100%}
-
-    /* 通用段落与分区 */
-    section{padding:58px 0;border-top:1px solid var(--line)}
-    h2{margin:0 0 12px;font-size:clamp(22px,2.6vw,30px)}
-    .muted{color:var(--muted)}
-
-    /* 特色卡片：左图标右内容 */
-    .grid{display:grid;gap:20px}
-    .grid.cols-3{grid-template-columns:repeat(3,1fr)}
-    .grid.cols-2{grid-template-columns:repeat(2,1fr)}
-    @media (max-width:980px){.hero-wrap{grid-template-columns:1fr}.grid.cols-3{grid-template-columns:1fr 1fr}}
-    @media (max-width:680px){.grid.cols-2,.grid.cols-3{grid-template-columns:1fr}}
-
-    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
-    .feature{display:flex;gap:16px;align-items:flex-start}
-    .feature .ico{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--brand),var(--brand-2));flex:0 0 auto;box-shadow:0 6px 18px rgba(102,226,255,.3)}
-
-    /* 画廊：主图 + 侧图两列，更贴近原站的非对称布局 */
-    .gallery{display:grid;grid-template-columns:2fr 1fr;gap:14px}
-    .gallery .stack{display:grid;gap:14px}
-    .gallery img{border-radius:14px}
-    @media (max-width:980px){.gallery{grid-template-columns:1fr}.gallery img{aspect-ratio:16/9;object-fit:cover}}
-
-    /* 平台 & 配置：左平台卡片右配置表 */
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left}
-    th{color:#fff}
+    /* 媒体画廊 */
+    .gallery{padding:60px 0 90px}
+    .gallery h2{margin:0 0 18px; font-size:28px}
+    .grid{
+      display:grid;
+      grid-template-columns: 1.6fr 1fr;
+      grid-template-rows: auto auto;
+      gap: var(--gap);
+      align-items:stretch;
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: var(--shadow);
+    }
+    .card img{
+      display:block;
+      width:100%; height:100%; object-fit:cover;
+    }
+    /* 左侧大图跨两行 */
+    .left{grid-row:1 / span 2}
+    .right-top, .right-bottom{height: 240px}
 
     /* 页脚 */
-    footer{padding:40px 0;color:var(--muted)}
-    .foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+    footer{color:var(--muted); padding:40px 0 70px; text-align:center; font-size:14px}
+    a{color:#9fd0ff}
   </style>
 </head>
 <body>
-  <!-- 顶部导航 -->
-  <header class="site">
-    <div class="container site-inner">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <strong>你的工作室名</strong>
+  <!-- 顶部：只有 Logo，去掉菜单 -->
+  <header class="top-bar">
+    <div class="container top-inner">
+      <div class="logo" id="logo">
+        <div class="logo-badge" aria-hidden="true"></div>
+        <span>你的工作室名 / LOGO</span>
       </div>
-      <nav>
-        <a href="#about" class="active">关于</a>
-        <a href="#features">特色</a>
-        <a href="#media">媒体</a>
-        <a href="#buy">购买</a>
-        <a href="#community">社区</a>
-        <a href="#support">支持</a>
-      </nav>
     </div>
   </header>
 
-  <!-- 首屏 Hero + Tabs -->
-  <section class="hero" id="top">
-    <div class="hero-bg" aria-hidden="true"></div>
-    <div class="hero-noise" aria-hidden="true"></div>
+  <!-- 英雄区：去掉“观看预告片”按钮和右侧视频，整体用背景图 -->
+  <section class="hero with-bg">
     <div class="container">
-      <div class="hero-wrap">
-        <div>
-          <div class="eyebrow">模拟 / 经营 / 解谜（示例）</div>
-          <h1 class="h1">你的小游戏名称</h1>
-          <p class="lead">一句话卖点介绍：写你游戏最核心的一句话价值主张。（请替换为你的文案）</p>
-          <div class="cta">
-            <a class="btn" href="#buy">立即购买 / 加愿望单</a>
-            <a class="btn ghost" href="#trailer">观看预告片</a>
-          </div>
-          <div class="tabs" role="tablist" style="margin-top:26px">
-            <button class="tab-btn active" data-tab="about" role="tab">关于</button>
-            <button class="tab-btn" data-tab="features" role="tab">特色</button>
-          </div>
-          <div id="tab-about" class="tab-panel" role="tabpanel">
-            <p class="muted">这里写 2–3 段关于游戏的总体介绍。支持多语言、本地化、键鼠与手柄等。（完全自定义）</p>
-          </div>
-          <div id="tab-features" class="tab-panel" role="tabpanel" hidden>
-            <ul class="muted">
-              <li>特色一：深度建造与自动化链路</li>
-              <li>特色二：物理与热力学模拟</li>
-              <li>特色三：随机地图与长期经营</li>
-            </ul>
-          </div>
-        </div>
-        <div class="hero-card">
-          <div class="media" id="trailer">
-            <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Game Trailer" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-          </div>
-          <p class="muted" style="margin:10px 0 0">演示视频占位：替换为你的预告片。</p>
+      <div class="content">
+        <h1 class="title">你的小游戏名称</h1>
+        <p class="subtitle">一句话卖点：写游戏最核心的一句话价值主张（支持多语言、本地化、键鼠与手柄等）。</p>
+        <div class="actions">
+          <a class="btn" href="#buy">立即购买 / 加愿望单</a>
+          <!-- 已删除：观看预告片按钮 -->
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 特色网格（更紧凑） -->
-  <section id="features">
-    <div class="container">
-      <h2>游戏特色</h2>
-      <div class="grid cols-3" style="margin-top:18px">
-        <article class="card feature">
-          <div class="ico" aria-hidden="true"></div>
-          <div>
-            <h3>生存与资源链</h3>
-            <p class="muted">平衡氧气、水、热量、食物与电力，规划高效的生产系统。</p>
-          </div>
-        </article>
-        <article class="card feature">
-          <div class="ico" aria-hidden="true"></div>
-          <div>
-            <h3>自动化与运输</h3>
-            <p class="muted">用传感器、导线与轨道实现全自动化，释放双手。</p>
-          </div>
-        </article>
-        <article class="card feature">
-          <div class="ico" aria-hidden="true"></div>
-          <div>
-            <h3>个性殖民者</h3>
-            <p class="muted">性格、特长与需求各不相同，合理分工才能蒸蒸日上。</p>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- 媒体画廊：大图 + 侧列栈 -->
-  <section id="media">
+  <!-- 媒体画廊：左侧静态图；右上静态图；右下 GIF 动图 -->
+  <section class="gallery">
     <div class="container">
       <h2>媒体画廊</h2>
-      <div class="gallery" style="margin-top:16px">
-        <img src="https://picsum.photos/1000/620" alt="Screenshot A"/>
-        <div class="stack">
-          <img src="https://picsum.photos/600/300?1" alt="Screenshot B"/>
-          <img src="https://picsum.photos/600/300?2" alt="Screenshot C"/>
-        </div>
+      <div class="grid">
+        <figure class="card left">
+          <img src="https://images.unsplash.com/photo-1501556424050-d4816356b73e?q=80&w=1600&auto=format&fit=crop" alt="左侧主图（请替换为你的图片）">
+        </figure>
+        <figure class="card right-top">
+          <img src="https://images.unsplash.com/photo-1516541196182-6bdb0516ed27?q=80&w=1200&auto=format&fit=crop" alt="右上图（请替换为你的图片）">
+        </figure>
+        <figure class="card right-bottom">
+          <!-- GIF 动图占位：可替换成本地 GIF 文件，如 images/preview.gif -->
+          <img src="https://media.giphy.com/media/du3J3cXyzhj75IOgvA/giphy.gif" alt="右下动图（请替换为你的 GIF）">
+        </figure>
       </div>
-      <p class="muted" style="margin-top:8px">请替换为你的截图或短视频缩略图。</p>
-    </div>
-  </section>
-
-  <!-- 购买 CTA / 平台 & 配置 -->
-  <section id="buy">
-    <div class="container">
-      <h2>购买与平台</h2>
-      <div class="grid cols-2" style="margin-top:12px">
-        <div class="card">
-          <h3>平台</h3>
-          <ul class="muted">
-            <li>PC（Steam / Epic Games Store）</li>
-            <li>语言：简体中文 / 英语 / 日语 / 韩语 …</li>
-            <li>输入：键鼠、手柄</li>
-          </ul>
-          <div class="cta">
-            <a class="btn" href="#">Steam 商店页</a>
-            <a class="btn ghost" href="#">Epic 商店页</a>
-          </div>
-        </div>
-        <div class="card">
-          <h3>最低配置（示例）</h3>
-          <table>
-            <tbody>
-              <tr><th>系统</th><td>Windows 10 64-bit</td></tr>
-              <tr><th>处理器</th><td>Intel i5 / AMD 同等</td></tr>
-              <tr><th>内存</th><td>8 GB RAM</td></tr>
-              <tr><th>显卡</th><td>GTX 960 / RX 560 以上</td></tr>
-              <tr><th>存储</th><td>2 GB 可用空间</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 社区 / 支持 -->
-  <section id="community">
-    <div class="container">
-      <h2>社区</h2>
-      <div class="grid cols-3" style="margin-top:12px">
-        <a class="card" href="#"><strong>Discord</strong><p class="muted">加入官方社区服务器，反馈与讨论。</p></a>
-        <a class="card" href="#"><strong>微博 / X / Bilibili</strong><p class="muted">关注更新与活动。</p></a>
-        <a class="card" href="#"><strong>问题反馈</strong><p class="muted">Bug 追踪与建议提交入口。</p></a>
-      </div>
-    </div>
-  </section>
-
-  <section id="support">
-    <div class="container">
-      <h2>常见问题</h2>
-      <details class="card"><summary><strong>是否支持离线游玩？</strong></summary><p class="muted">示例答案：支持。联网仅用于云存档与排行榜。</p></details>
-      <details class="card"><summary><strong>是否有存档跨平台？</strong></summary><p class="muted">示例答案：当前支持 PC 跨商店导入本地存档。</p></details>
     </div>
   </section>
 
   <footer>
-    <div class="container foot">
-      <div>© 2025 你的工作室名 / 你的公司名</div>
-      <div class="muted">联系：<a href="mailto:hello@example.com">hello@example.com</a></div>
+    <div class="container">
+      © <span id="y"></span> 你的工作室名。本页面为示例模板，你可以自由修改文案、图片与样式。
     </div>
   </footer>
 
   <script>
-    // 简洁 Tab 逻辑（靠近 ONI 页面的 About/Features 体验）
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    const panels = {
-      about: document.getElementById('tab-about'),
-      features: document.getElementById('tab-features')
-    };
-    tabButtons.forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        tabButtons.forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        const key = btn.dataset.tab;
-        Object.entries(panels).forEach(([k,el])=>{
-          el.hidden = (k!==key);
-        });
+    // 年份
+    document.getElementById('y').textContent = new Date().getFullYear();
+
+    // 进入页面时让 LOGO 从左移动到中间
+    window.addEventListener('DOMContentLoaded', function(){
+      requestAnimationFrame(function(){
+        document.getElementById('logo').classList.add('move-center');
       });
     });
   </script>
