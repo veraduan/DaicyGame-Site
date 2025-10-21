@@ -5,130 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>你的小游戏 - 着陆页</title>
   <meta name="description" content="你的小游戏的简单介绍着陆页" />
-
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-
   <style>
     :root{
-      --bg:#0b0f14;
-      --bg2:#121826;
-      --text:#e7edf3;
-      --muted:#9fb3c8;
-      --accent:#ffd166;
-      --accent2:#ff9f1c;
-      --card:#1b2536;
-      --ring:#233043;
-      --shadow: 0 20px 40px rgba(0,0,0,.35);
-      --radius: 16px;
-      --gap: 22px;
-      --maxw: 1120px;
+      --bg:#0b0f14; --bg2:#121826; --text:#e7edf3; --muted:#9fb3c8;
+      --accent:#ffd166; --accent2:#ff9f1c; --shadow: 0 20px 40px rgba(0,0,0,.35);
+      --radius: 16px; --gap: 22px; --maxw: 1120px;
+      --tile-w: 960px; --tile-h: 607px;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,Helvetica,Arial,sans-serif;
-      color:var(--text);
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,Helvetica,Arial,sans-serif; color:var(--text);
       background:
         radial-gradient(1200px 600px at 20% -10%, #1a2740 0%, transparent 60%),
         radial-gradient(900px 600px at 100% 10%, #2b153d 0%, transparent 50%),
-        linear-gradient(180deg,var(--bg),var(--bg2));
-      background-attachment: fixed;
+        linear-gradient(180deg,var(--bg),var(--bg2)); background-attachment: fixed;
     }
     .container{max-width:var(--maxw); margin:0 auto; padding:0 20px}
 
-    /* 顶部栏 */
-    header.top-bar{
-      position:sticky; top:0; z-index:50;
-      backdrop-filter: blur(10px);
-      background:linear-gradient(180deg, rgba(5,7,12,.72), rgba(5,7,12,.32));
-      border-bottom:1px solid rgba(255,255,255,.06);
-    }
+    header.top-bar{ position:sticky; top:0; z-index:50; backdrop-filter: blur(10px);
+      background:linear-gradient(180deg, rgba(5,7,12,.72), rgba(5,7,12,.32)); border-bottom:1px solid rgba(255,255,255,.06);}
     .top-inner{display:flex; align-items:center; height:64px; position:relative;}
-    .logo{
-      position:relative;
-      left:0;
-      transform:translateX(0);
-      transition: left 900ms cubic-bezier(.19,1,.22,1), transform 900ms cubic-bezier(.19,1,.22,1);
-      display:flex; align-items:center; gap:12px;
-      font-weight:800; letter-spacing:.5px; font-size:18px;
-    }
-    .logo-badge{
-      width:34px; height:34px; border-radius:12px;
-      background: conic-gradient(from 210deg, #8a7bff, #7de2ff, #ffa7d1, #ffd166, #8a7bff);
-      box-shadow: 0 8px 24px rgba(120,120,255,.35);
-    }
+    .logo{ position:relative; left:0; transform:translateX(0); transition: left 900ms cubic-bezier(.19,1,.22,1), transform 900ms cubic-bezier(.19,1,.22,1);
+      display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:.5px; font-size:18px;}
+    .logo-badge{ width:34px; height:34px; border-radius:12px; background: conic-gradient(from 210deg, #8a7bff, #7de2ff, #ffa7d1, #ffd166, #8a7bff); box-shadow: 0 8px 24px rgba(120,120,255,.35);}
     .move-center{ left:50%; transform: translateX(-50%); }
 
-    /* 英雄区（大框换成背景图） */
-    .hero{
-      position:relative;
-      padding: 120px 0 100px;
-      overflow:hidden;
-    }
+    .hero{ position:relative; padding: 120px 0 100px; overflow:hidden; }
     .hero.with-bg{
-      --hero:url('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1600&auto=format&fit=crop');
+      --hero:url('assets/hero-bg.jpg');
       background-image: radial-gradient(800px 400px at 15% 10%, rgba(78,107,255,.25), transparent 60%),
                         radial-gradient(500px 300px at 100% 20%, rgba(255,112,165,.20), transparent 60%),
                         var(--hero);
-      background-size: cover;
-      background-position: center;
+      background-size: cover; background-position: center;
       border-bottom: 1px solid rgba(255,255,255,.06);
     }
     .hero .content{ max-width: 720px; }
     .title{font-size: clamp(36px, 6vw, 64px); margin:0 0 14px; line-height:1.05}
     .subtitle{font-size: clamp(16px, 2.4vw, 20px); color:var(--muted); margin:0 0 26px}
-    .actions{display:flex; gap:14px}
-    .btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      padding:12px 22px; border-radius:10px; font-weight:600; cursor:pointer;
-      border:1px solid rgba(255,255,255,.12);
-      box-shadow: var(--shadow);
-      text-decoration:none; color:#0a0a0a;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-    }
+    .actions{display:flex; gap:14px; flex-wrap:wrap}
+    .btn{display:inline-flex; align-items:center; justify-content:center; padding:12px 22px; border-radius:10px; font-weight:600; cursor:pointer;
+      border:1px solid rgba(255,255,255,.12); box-shadow: var(--shadow); text-decoration:none; color:#0a0a0a; background: linear-gradient(135deg, var(--accent), var(--accent2));}
     .btn:active{transform:translateY(1px)}
 
-    /* 媒体画廊（左静态图 + 右GIF） */
-    .gallery{padding:60px 0 90px}
+    .gallery{padding:60px 0 24px}
     .gallery h2{margin:0 0 18px; font-size:28px}
-    .grid{
-      display:grid;
-      grid-template-columns: 1.6fr 1fr;
-      gap: var(--gap);
-      align-items:stretch;
-    }
-    /* 统一高度：在桌面端看起来对齐，移动端自动堆叠 */
-    .media-h{
-      height: clamp(360px, 52vw, 540px);
-    }
-    .card{
+
+    .pair{ display:grid; grid-template-columns: 1fr 1fr; gap: var(--gap); align-items:start; margin-bottom: 28px; }
+    .tile{
       background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.08);
-      border-radius: var(--radius);
-      overflow:hidden;
-      box-shadow: var(--shadow);
+      border:1px solid rgba(255,255,255,.08); border-radius: var(--radius);
+      overflow:hidden; box-shadow: var(--shadow);
+      width: min(var(--tile-w), 100%);
+      aspect-ratio: 960 / 607; height: auto; display:flex;
     }
-    .card img{
-      display:block;
-      width:100%; height:100%; object-fit:cover;
-    }
+    .tile img{ width:100%; height:100%; object-fit:cover; display:block; }
+    @media (max-width: 980px){ .pair{ grid-template-columns: 1fr; } }
 
-    /* 响应式：小屏改成单列 */
-    @media (max-width: 860px){
-      .grid{ grid-template-columns: 1fr; }
-      .media-h{ height: 300px; }
-    }
+    .section{ padding: 48px 0; border-top:1px solid rgba(255,255,255,.06); }
+    .section h3{ margin:0 0 12px; font-size:24px }
+    .muted{ color:var(--muted); }
 
-    /* 页脚与后续内容保留（不删除） */
-    .section{ padding: 40px 0; border-top:1px solid rgba(255,255,255,.06); }
-    .section h3{ margin:0 0 12px; }
+    .store-grid{ display:grid; gap:var(--gap); grid-template-columns: repeat(3, 1fr); }
+    .store-card{ background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:12px;
+      padding:20px; box-shadow: var(--shadow); display:flex; flex-direction:column; gap:12px; }
+    .store-card .store-btn{ margin-top:auto; text-decoration:none; text-align:center; background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color:#0a0a0a; padding:10px 16px; border-radius:8px; font-weight:700; border:1px solid rgba(255,255,255,.12); display:inline-block; }
+    .store-btn.disabled{ background:#3b3f46; color:#a7b0bb; cursor:not-allowed; pointer-events:none; border-color:rgba(255,255,255,.08) }
+    @media (max-width: 900px){ .store-grid{ grid-template-columns: 1fr; } }
+
+    .contact-list{ display:grid; gap:var(--gap); grid-template-columns: repeat(2, 1fr); }
+    .contact-item{ background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:18px; }
+    .contact-item a{ color:#9fd0ff; text-decoration:none; }
+    @media (max-width: 900px){ .contact-list{ grid-template-columns: 1fr; } }
+
     footer{color:var(--muted); padding:40px 0 70px; text-align:center; font-size:14px}
     a{color:#9fd0ff}
   </style>
 </head>
 <body>
-  <!-- 顶部：只有 Logo，去掉菜单 -->
   <header class="top-bar">
     <div class="container top-inner">
       <div class="logo" id="logo">
@@ -138,57 +94,90 @@
     </div>
   </header>
 
-  <!-- 英雄区 -->
   <section class="hero with-bg">
     <div class="container">
       <div class="content">
         <h1 class="title">你的小游戏名称</h1>
         <p class="subtitle">一句话卖点：写游戏最核心的一句话价值主张（支持多语言、本地化、键鼠与手柄等）。</p>
         <div class="actions">
-          <a class="btn" href="#buy">立即购买 / 加愿望单</a>
+          <a class="btn" href="#store">立即购买 / 加愿望单</a>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 媒体画廊：左侧图片；右侧 GIF -->
   <section class="gallery">
     <div class="container">
       <h2>媒体画廊</h2>
-      <div class="grid">
-        <figure class="card media-h">
-          <!-- 左侧：静态图片（替换为你的图） -->
-          <img src="https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=1600&auto=format&fit=crop" alt="左侧图片（请替换）">
-        </figure>
-        <figure class="card media-h">
-          <!-- 右侧：GIF 动图（替换为你的 gif 路径） -->
-          <img src="https://media.giphy.com/media/du3J3cXyzhj75IOgvA/giphy.gif" alt="右侧 GIF（请替换）">
-        </figure>
+      <!-- 组1 ~ 组9 -->
+      <div class="pair"><figure class="tile left"><img src="assets/g1-left.jpg" alt="组1-静态图"></figure><figure class="tile right"><img src="assets/g1-right.gif" alt="组1-GIF"></figure></div>
+      <div class="pair"><figure class="tile left"><img src="assets/g2-left.jpg" alt="组2-静态图"></figure><figure class="tile right"><img src="assets/g2-right.gif" alt="组2-GIF"></figure></div>
+      <div class="pair"><figure class="tile left"><img src="assets/g3-left.jpg" alt="组3-静态图"></figure><figure class="tile right"><img src="assets/g3-right.gif" alt="组3-GIF"></figure></div>
+      <div class="pair"><figure class="tile left"><img src="assets/g4-left.jpg" alt="组4-静态图"></figure><figure class="tile right"><img src="assets/g4-right.gif" alt="组4-GIF"></figure></div>
+      <div class="pair"><figure class="tile left"><img src="assets/g5-left.jpg" alt="组5-静态图"></figure><figure class="tile right"><img src="assets/g5-right.gif" alt="组5-GIF"></figure></div>
+      <div class="pair"><figure class="tile left"><img src="assets/g6-left.jpg" alt="组6-静态图"></figure><figure class="tile right"><img src="assets/g6-right.gif" alt="组6-GIF"></figure></div>
+      <div class="pair"><figure class="tile left"><img src="assets/g7-left.jpg" alt="组7-静态图"></figure><figure class="tile right"><img src="assets/g7-right.gif" alt="组7-GIF"></figure></div>
+      <div class="pair"><figure class="tile left"><img src="assets/g8-left.jpg" alt="组8-静态图"></figure><figure class="tile right"><img src="assets/g8-right.gif" alt="组8-GIF"></figure></div>
+      <div class="pair"><figure class="tile left"><img src="assets/g9-left.jpg" alt="组9-静态图"></figure><figure class="tile right"><img src="assets/g9-right.gif" alt="组9-GIF"></figure></div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="container">
+      <h3>特性（占位示例）</h3>
+      <p class="muted">此处保留为占位内容，方便你后续继续编辑其他板块。</p>
+    </div>
+  </section>
+
+  <section class="section" id="store">
+    <div class="container">
+      <h3>购买 / 加愿望单</h3>
+      <p class="muted">把下面链接替换为你的真实商店地址。</p>
+      <div class="store-grid">
+        <div class="store-card">
+          <strong>Steam</strong>
+          <p class="muted">加入愿望单或购买。</p>
+          <a class="store-btn" href="https://store.steampowered.com/app/000000" target="_blank" rel="noopener">前往 Steam</a>
+        </div>
+        <div class="store-card">
+          <strong>Epic Games Store</strong>
+          <p class="muted">Epic 版本说明。</p>
+          <div class="store-btn disabled">暂未开放</div>
+        </div>
+        <div class="store-card">
+          <strong>itch.io</strong>
+          <p class="muted">独立平台。</p>
+          <div class="store-btn disabled">暂未开放</div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ✅ 下面的页面内容保留：这里给一个占位的“特性”段落，后续你可以继续改，不会被删除 -->
-  <section class="section">
+  <section class="section" id="contact">
     <div class="container">
-      <h3>特性（占位示例）</h3>
-      <p>这里保留为占位内容，方便你后续继续编辑其他板块。你可以添加：关于 / 特性列表 / 媒体素材说明 / 支持平台 / 价格与购买链接 等等。</p>
+      <h3>联系方式</h3>
+      <div class="contact-list">
+        <div class="contact-item">
+          <strong>邮箱</strong>
+          <p class="muted">媒体/合作/玩家反馈。</p>
+          <p><a href="mailto:hello@yourstudio.com">hello@yourstudio.com</a></p>
+        </div>
+        <div class="contact-item">
+          <strong>Discord</strong>
+          <p class="muted">加入社区。</p>
+          <p><a href="https://discord.gg/yourinvite" target="_blank" rel="noopener">加入 Discord</a></p>
+        </div>
+      </div>
     </div>
   </section>
 
   <footer>
-    <div class="container">
-      © <span id="y"></span> 你的工作室名。本页面为示例模板，你可以自由修改文案、图片与样式。
-    </div>
+    <div class="container">© <span id="y"></span> 你的工作室名。</div>
   </footer>
 
   <script>
     document.getElementById('y').textContent = new Date().getFullYear();
-    window.addEventListener('DOMContentLoaded', function(){
-      requestAnimationFrame(function(){
-        document.getElementById('logo').classList.add('move-center');
-      });
-    });
+    window.addEventListener('DOMContentLoaded', function(){ requestAnimationFrame(function(){ document.getElementById('logo').classList.add('move-center'); }); });
   </script>
 </body>
 </html>
