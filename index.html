@@ -1,185 +1,133 @@
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <link rel="icon" href="/DaicyGame-Site/favicon.ico" type="image/x-icon">
-  <link rel="shortcut icon" href="/DaicyGame-Site/favicon.ico" type="image/x-icon">
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DaicyGameStudio</title>
-  <meta name="description" content="DaicyGameStudioDescription" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      --bg:#0b0f14; --bg2:#121826; --text:#e7edf3; --muted:#9fb3c8;
-      --accent:#ffd166; --accent2:#ff9f1c; --shadow: 0 20px 40px rgba(0,0,0,.35);
-      --radius: 16px; --gap: 22px; --maxw: 1120px;
-      --tile-w: 960px; --tile-h: 607px;
+export interface Env {
+  WEBHOOK_SECRET_S4631?: string; // hex
+}
+
+const ALLOWED_DRIFT_MS = 5 * 60 * 1000; // 5分钟时间窗
+
+export default {
+  async fetch(req: Request, env: Env): Promise<Response> {
+    if (req.method === 'OPTIONS') {
+      return cors(new Response(null, { status: 204 }));
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,PingFang SC,Microsoft YaHei,Helvetica,Arial,sans-serif; color:var(--text);
-      background:
-        radial-gradient(1200px 600px at 20% -10%, #1a2740 0%, transparent 60%),
-        radial-gradient(900px 600px at 100% 10%, #2b153d 0%, transparent 50%),
-        linear-gradient(180deg,var(--bg),var(--bg2)); background-attachment: fixed;
+    if (req.method !== 'POST') {
+      return cors(json({ ok: false, message: 'Method Not Allowed' }, 405));
     }
-    .container{max-width:var(--maxw); margin:0 auto; padding:0 20px}
 
-    header.top-bar{ position:sticky; top:0; z-index:50; backdrop-filter: blur(10px);
-      background:linear-gradient(180deg, rgba(5,7,12,.72), rgba(5,7,12,.32)); border-bottom:1px solid rgba(255,255,255,.06);}
-    .top-inner{display:flex; align-items:center; height:64px; position:relative;}
-    .logo{ position:relative; left:0; transform:translateX(0); transition: left 900ms cubic-bezier(.19,1,.22,1), transform 900ms cubic-bezier(.19,1,.22,1);
-      display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:.5px; font-size:18px;}
-    .logo-badge{ width:34px; height:34px; border-radius:12px; background: conic-gradient(from 210deg, #8a7bff, #7de2ff, #ffa7d1, #ffd166, #8a7bff); box-shadow: 0 8px 24px rgba(120,120,255,.35);}
-    .move-center{ left:50%; transform: translateX(-50%); }
+    // 1) 原始字节 + 文本
+    const raw = await req.arrayBuffer();
+    const bodyText = new TextDecoder().decode(raw);
 
-    .hero{ position:relative; padding: 120px 0 100px; overflow:hidden; }
-    .hero.with-bg{
-      --hero:url('assets/hero-bg.jpg');
-      background-image: radial-gradient(800px 400px at 15% 10%, rgba(78,107,255,.25), transparent 60%),
-                        radial-gradient(500px 300px at 100% 20%, rgba(255,112,165,.20), transparent 60%),
-                        var(--hero);
-      background-size: cover; background-position: center;
-      border-bottom: 1px solid rgba(255,255,255,.06);
+    // 2) 先校验签名（失败直接 401）
+    const sigHeader = req.headers.get('X-Signature') || '';
+    const tsHeader = req.headers.get('X-Timestamp') || '';
+    const corId = req.headers.get('X-Epic-Correlation-ID') || undefined;
+
+    if (!tsHeader || !isFreshTimestamp(tsHeader, ALLOWED_DRIFT_MS)) {
+      return cors(json({ ok: false, message: 'Invalid or missing X-Timestamp' }, 401, corId));
     }
-    .hero .content{ max-width: 720px; }
-    .title{font-size: clamp(36px, 6vw, 64px); margin:0 0 14px; line-height:1.05}
-    .subtitle{font-size: clamp(16px, 2.4vw, 20px); color:var(--muted); margin:0 0 26px}
-    .actions{display:flex; gap:14px; flex-wrap:wrap}
-    .btn{display:inline-flex; align-items:center; justify-content:center; padding:12px 22px; border-radius:10px; font-weight:600; cursor:pointer;
-      border:1px solid rgba(255,255,255,.12); box-shadow: var(--shadow); text-decoration:none; color:#0a0a0a; background: linear-gradient(135deg, var(--accent), var(--accent2));}
-    .btn:active{transform:translateY(1px)}
 
-    .gallery{padding:60px 0 24px}
-    .gallery h2{margin:0 0 18px; font-size:28px}
-
-    .pair{ display:grid; grid-template-columns: 1fr 1fr; gap: var(--gap); align-items:start; margin-bottom: 28px; }
-    .tile{
-      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.08); border-radius: var(--radius);
-      overflow:hidden; box-shadow: var(--shadow);
-      width: min(var(--tile-w), 100%);
-      aspect-ratio: 960 / 607; height: auto; display:flex;
+    const okSig = await verifyEpicSignature(sigHeader, new Uint8Array(raw), env);
+    if (!okSig) {
+      return cors(json({ ok: false, message: 'Invalid or missing X-Signature' }, 401, corId));
     }
-    .tile img{ width:100%; height:100%; object-fit:cover; display:block; }
-    @media (max-width: 980px){ .pair{ grid-template-columns: 1fr; } }
 
-    .section{ padding: 48px 0; border-top:1px solid rgba(255,255,255,.06); }
-    .section h3{ margin:0 0 12px; font-size:24px }
-    .muted{ color:var(--muted); }
+    // 3) 业务解析
+    let body: any = null;
+    try { body = JSON.parse(bodyText); }
+    catch { return cors(json({ ok: false, message: 'Invalid JSON' }, 400, corId)); }
 
-    .store-grid{ display:grid; gap:var(--gap); grid-template-columns: repeat(3, 1fr); }
-    .store-card{ background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:12px;
-      padding:20px; box-shadow: var(--shadow); display:flex; flex-direction:column; gap:12px; }
-    .store-card .store-btn{ margin-top:auto; text-decoration:none; text-align:center; background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color:#0a0a0a; padding:10px 16px; border-radius:8px; font-weight:700; border:1px solid rgba(255,255,255,.12); display:inline-block; }
-    .store-btn.disabled{ background:#3b3f46; color:#a7b0bb; cursor:not-allowed; pointer-events:none; border-color:rgba(255,255,255,.08) }
-    @media (max-width: 900px){ .store-grid{ grid-template-columns: 1fr; } }
+    const { eventType } = body || {};
+    const hasEventId = typeof body?.eventId === 'string' && body.eventId.length > 0;
 
-    .contact-list{ display:grid; gap:var(--gap); grid-template-columns: repeat(2, 1fr); }
-    .contact-item{ background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:18px; }
-    .contact-item a{ color:#9fd0ff; text-decoration:none; }
-    @media (max-width: 900px){ .contact-list{ grid-template-columns: 1fr; } }
+    // 4) 针对验证测试的最小实现
+    switch (eventType) {
+      case 'event-v1-acknowledge':
+      case 'event-v1-player-id-verification':
+      case 'event-v1-fulfill':
+      case 'event-v1-clawback': {
+        if (!hasEventId) {
+          return cors(json({ ok: false, message: 'Missing eventId' }, 400, corId));
+        }
+        return cors(json({
+          ok: true,
+          message: 'Webhook verified successfully',
+          namespace: body.namespace ?? null,
+          productId: body.productId
+        }, 200, corId));
+      }
+      default:
+        return cors(json({ ok: false, message: 'Unsupported eventType' }, 400, corId));
+    }
+  },
+};
 
-    footer{color:var(--muted); padding:40px 0 70px; text-align:center; font-size:14px}
-    a{color:#9fd0ff}
-  </style>
-</head>
-<body>
-  <header class="top-bar">
-    <div class="container top-inner">
-      <div class="logo" id="logo">
-        <img src="assets/logo.png" alt="DaicyGameStudio" class="logo-img">
-        <span>DaicyGameStudio</span>
-      </div>
-    </div>
-  </header>
+/** ======= 工具函数 ======= */
 
-  <section class="hero with-bg">
-    <div class="container">
-      <div class="content">
-        <h1 class="title">Let Me See</h1>
-        <p class="subtitle">A collection of fun and relaxing puzzle games, la-la-la~<br>(Supports multiple languages and gamepad)</p>
-        <div class="actions">
-          <a class="btn" href="#store">Buy Now / Add to Wishlist</a>
-        </div>
-      </div>
-    </div>
-  </section>
+function cors(res: Response): Response;
+function cors(res: Response, status?: number): Response;
+function cors(resOrBody: any, status?: number): Response {
+  const res = resOrBody instanceof Response ? resOrBody : new Response(resOrBody, { status });
+  const headers = new Headers(res.headers);
+  headers.set('access-control-allow-origin', '*');
+  headers.set('access-control-allow-methods', 'GET,POST,OPTIONS');
+  headers.set('access-control-allow-headers', '*');
+  headers.set('cache-control', 'no-store');
+  // ⚠️ 不要把请求头（尤其 X-Signature）回显到响应
+  return new Response(res.body, { status: res.status, headers });
+}
 
-  <section class="gallery">
-    <div class="container">
-      <h2>Gallery</h2>
-      <!-- 组1 ~ 组9 -->
-      <div class="pair"><figure class="tile left"><img src="assets/g1-left.jpg" alt="组1-静态图"></figure><figure class="tile right"><img src="assets/g1-right.gif" alt="组1-GIF"></figure></div>
-      <div class="pair"><figure class="tile left"><img src="assets/g2-left.jpg" alt="组2-静态图"></figure><figure class="tile right"><img src="assets/g2-right.gif" alt="组2-GIF"></figure></div>
-      <div class="pair"><figure class="tile left"><img src="assets/g3-left.jpg" alt="组3-静态图"></figure><figure class="tile right"><img src="assets/g3-right.gif" alt="组3-GIF"></figure></div>
-      <div class="pair"><figure class="tile left"><img src="assets/g4-left.jpg" alt="组4-静态图"></figure><figure class="tile right"><img src="assets/g4-right.gif" alt="组4-GIF"></figure></div>
-      <div class="pair"><figure class="tile left"><img src="assets/g5-left.jpg" alt="组5-静态图"></figure><figure class="tile right"><img src="assets/g5-right.gif" alt="组5-GIF"></figure></div>
-      <div class="pair"><figure class="tile left"><img src="assets/g6-left.jpg" alt="组6-静态图"></figure><figure class="tile right"><img src="assets/g6-right.gif" alt="组6-GIF"></figure></div>
-      <div class="pair"><figure class="tile left"><img src="assets/g7-left.jpg" alt="组7-静态图"></figure><figure class="tile right"><img src="assets/g7-right.gif" alt="组7-GIF"></figure></div>
-      <div class="pair"><figure class="tile left"><img src="assets/g8-left.jpg" alt="组8-静态图"></figure><figure class="tile right"><img src="assets/g8-right.gif" alt="组8-GIF"></figure></div>
-      <div class="pair"><figure class="tile left"><img src="assets/g9-left.jpg" alt="组9-静态图"></figure><figure class="tile right"><img src="assets/g9-right.gif" alt="组9-GIF"></figure></div>
-    </div>
-  </section>
+function json(obj: unknown, status = 200, correlationId?: string): Response {
+  const headers = new Headers();
+  headers.set('content-type', 'application/json; charset=utf-8');
+  if (correlationId) headers.set('x-epic-correlation-id', correlationId);
+  return new Response(JSON.stringify(obj), { status, headers });
+}
 
-  <section class="section" id="features">
-    <div class="container">
-      <h3>Features</h3>
-      <p class="muted">Thanks to procedural generation, every round offers a brand-new experience.</p>
-    </div>
-  </section>
+function isFreshTimestamp(tsIso: string, driftMs: number): boolean {
+  const t = Date.parse(tsIso);
+  if (Number.isNaN(t)) return false;
+  const now = Date.now();
+  return Math.abs(now - t) <= driftMs;
+}
 
-  <section class="section" id="store">
-    <div class="container">
-      <h3>Buy Now / Add to Wishlist</h3>
-      <p class="muted">Shop</p>
-      <div class="store-grid">
-        <div class="store-card">
-          <strong>Epic Games Store</strong>
-          <p class="muted"></p>
-          <a class="store-btn" href="https://store.epicgames.com/p/let-me-see-691882" target="_blank" rel="noopener">View on Epic</a>
-        </div>
-        <div class="store-card">
-          <strong>Steam</strong>
-          <p class="muted"></p>
-          <div class="store-btn disabled">Coming Soon</div>
-        </div>
-        <div class="store-card">
-          <strong>itch.io</strong>
-          <p class="muted"></p>
-          <div class="store-btn disabled">Coming Soon</div>
-        </div>
-      </div>
-    </div>
-  </section>
+async function verifyEpicSignature(sigHeader: string, raw: Uint8Array, env: Env): Promise<boolean> {
+  // 解析 "S4631=hex"
+  const pairs = sigHeader.split(',').map(s => s.trim()).filter(Boolean);
+  if (pairs.length === 0) return false;
 
-  <section class="section" id="contact">
-    <div class="container">
-      <h3>Contact</h3>
-      <div class="contact-list">
-        <div class="contact-item">
-          <strong>Email</strong>
-          <p class="muted">Media / Partnership / Player Feedback</p>
-          <p><a href="mailto:2395380761@qq.com">2395380761@qq.com</a></p>
-        </div>
-        <div class="contact-item">
-          <strong>Discord</strong>
-          <p class="muted">Join the Community</p>
-          <p><a href="https://discord.gg/DSYQMvTt37" target="_blank" rel="noopener">Join Discord</a></p>
-        </div>
-      </div>
-    </div>
-  </section>
+  const map: Record<string, string> = {};
+  for (const p of pairs) {
+    const [k, v] = p.split('=');
+    if (!k || !v) continue;
+    map[k] = v;
+  }
 
-  <footer>
-    <div class="container">© <span id="y"></span> All Rights Reserved DaicyGameStudio 2025</div>
-  </footer>
+  // 仅支持你这把新 key（KID=S4631）
+  const secretHex = env.WEBHOOK_SECRET_S4631;
+  const sigHex = map['S4631'];
 
-  <script>
-    document.getElementById('y').textContent = new Date().getFullYear();
-    window.addEventListener('DOMContentLoaded', function(){ requestAnimationFrame(function(){ document.getElementById('logo').classList.add('move-center'); }); });
-  </script>
-</body>
-</html>
+  if (!secretHex || !sigHex) return false;
+  return await hmacEquals(raw, secretHex, sigHex);
+}
+
+async function hmacEquals(raw: Uint8Array, secretHex: string, sigHex: string): Promise<boolean> {
+  const keyBytes = hexToBytes(secretHex);
+  const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, raw));
+  return bytesEq(mac, hexToBytes(sigHex));
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const s = hex.trim().toLowerCase().replace(/^0x/, '');
+  if (s.length % 2 !== 0) throw new Error('bad hex');
+  const out = new Uint8Array(s.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.substr(i * 2, 2), 16);
+  return out;
+}
+
+function bytesEq(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
