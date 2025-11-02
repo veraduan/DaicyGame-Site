@@ -1,11 +1,11 @@
 export interface Env {
-  // 这里不必列出所有 ID；代码会按 X-Signature 里的 ID 动态取值
-  // 例如：WEBHOOK_SECRET_S4631 = "<Epic 在“签名密钥”里给你的密钥>"
-  [key: string]: string;
+  // 例：WEBHOOK_SECRET_S4631 = "<Epic 控制台里该 Webhook 的“签名密钥”原文（不是ID，不是hex）>"
+  [key: string]: string | undefined;
 }
 
-const textJson = (status: number, body: Record<string, unknown>) =>
-  new Response(JSON.stringify(body), {
+/* ---------- 通用响应工具（带强制清洗响应头） ---------- */
+function buildJson(status: number, body: Record<string, unknown>): Response {
+  const res = new Response(JSON.stringify(body), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
@@ -15,119 +15,134 @@ const textJson = (status: number, body: Record<string, unknown>) =>
       "access-control-allow-headers": "*",
     },
   });
+  return scrubHeaders(res);
+}
 
+function scrubHeaders(res: Response): Response {
+  const h = new Headers(res.headers);
+  // ⚠️ 核心：无论哪里加上的，都在返回前删掉这俩头（大小写全覆盖）
+  ["x-signature", "X-Signature", "x-timestamp", "X-Timestamp"].forEach((k) => h.delete(k));
+  return new Response(res.body, { status: res.status, headers: h });
+}
+
+function ok(body: Record<string, unknown>) {
+  return buildJson(200, body);
+}
+function badRequest(msg: string) {
+  return buildJson(400, { ok: false, message: msg });
+}
+function unauthorized() {
+  return buildJson(401, { ok: false, message: "Invalid or missing X-Signature" });
+}
+
+/* ---------- 安全/验签工具 ---------- */
 function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   let v = 0;
   for (let i = 0; i < a.length; i++) v |= a[i] ^ b[i];
   return v === 0;
 }
-
 function hexToBytes(hex: string): Uint8Array {
-  if (hex.length % 2 !== 0) throw new Error("bad hex");
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  const s = hex.trim().toLowerCase().replace(/^0x/, "");
+  if (s.length % 2 !== 0) throw new Error("bad hex");
+  const out = new Uint8Array(s.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.slice(i * 2, i * 2 + 2), 16);
   return out;
 }
 
+/**
+ * HMAC-SHA256 验签：
+ * - 取头：X-Signature: "<KID>=<hex64>"
+ * - 取头：X-Timestamp: ISO8601
+ * - 消息为  `${timestamp}.${rawBodyBytes}`
+ * - 注意：Epic 的“签名密钥”是**明文字符串**（不是十六进制），要用UTF-8导入；而 header 里的签名是十六进制
+ */
 async function verifySignature(req: Request, env: Env, raw: Uint8Array): Promise<true | Response> {
   const sigHeader = req.headers.get("X-Signature") || "";
   const ts = req.headers.get("X-Timestamp") || "";
 
-  // 1) 基础检查
-  // 形如: "S4631=<hex>"
+  // 形如 "S4631=abcdef...(64 hex)"
   const m = sigHeader.match(/^([A-Za-z0-9_-]+)=([a-fA-F0-9]{64})$/);
-  if (!m || !ts) {
-    return textJson(401, { ok: false, message: "Invalid or missing X-Signature" });
-  }
-  const webhookId = m[1];
+  if (!m || !ts) return unauthorized();
+  const kid = m[1];
   const sigHex = m[2].toLowerCase();
 
-  // 2) 取密钥（确保是 Epic 后台“签名密钥”，不是 webhook id）
-  const secret = env[`WEBHOOK_SECRET_${webhookId}`];
-  if (!secret) {
-    return textJson(401, { ok: false, message: "Invalid or missing X-Signature" });
-  }
+  // 取密钥（必须是 Epic 控制台生成的“签名密钥”原文；不要放ID）
+  const secret = env[`WEBHOOK_SECRET_${kid}`];
+  if (!secret) return unauthorized();
 
-  // 3) 时间窗口（±5 分钟）
-  const now = Date.now();
+  // 时间容忍窗口 ±5 分钟
   const t = Date.parse(ts);
-  if (!Number.isFinite(t) || Math.abs(now - t) > 5 * 60 * 1000) {
-    return textJson(401, { ok: false, message: "Invalid or missing X-Signature" });
-  }
+  if (!Number.isFinite(t) || Math.abs(Date.now() - t) > 5 * 60 * 1000) return unauthorized();
 
-  // 4) 计算 HMAC-SHA256(secret, `${ts}.${rawBody}`)
-  const msg = new Uint8Array(ts.length + 1 + raw.length);
-  msg.set(new TextEncoder().encode(ts), 0);
-  msg.set(new TextEncoder().encode("."), ts.length);
-  msg.set(raw, ts.length + 1);
+  // 组装消息：timestamp . rawBody
+  const enc = new TextEncoder();
+  const tsBytes = enc.encode(ts);
+  const dot = enc.encode(".");
+  const msg = new Uint8Array(tsBytes.length + 1 + raw.length);
+  msg.set(tsBytes, 0);
+  msg.set(dot, tsBytes.length);
+  msg.set(raw, tsBytes.length + 1);
 
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sigBuf = await crypto.subtle.sign("HMAC", key, msg);
-  const sigBytes = new Uint8Array(sigBuf);
+  // 计算 HMAC(secret, msg)；注意 secret 是明文字符串
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, msg));
 
-  // 5) 常量时间比较
-  if (!constantTimeEqual(sigBytes, hexToBytes(sigHex))) {
-    return textJson(401, { ok: false, message: "Invalid or missing X-Signature" });
-  }
+  // 常量时间对比
+  const sigBytes = hexToBytes(sigHex);
+  if (!constantTimeEqual(mac, sigBytes)) return unauthorized();
 
   return true;
 }
 
+/* ---------- /verify 处理 ---------- */
 async function handleVerify(req: Request, env: Env): Promise<Response> {
-  const rawBuf = new Uint8Array(await req.clone().arrayBuffer());
+  const raw = new Uint8Array(await req.clone().arrayBuffer());
 
-  // 验签
-  const verified = await verifySignature(req, env, rawBuf);
-  if (verified !== true) return verified;
+  // 先验签（失败直接 401）
+  const okSig = await verifySignature(req, env, raw);
+  if (okSig !== true) return okSig;
 
-  // 字段检查（只在验签通过后做）
-  let payload: any;
+  // 再做业务校验
+  let body: any = {};
   try {
-    payload = JSON.parse(new TextDecoder().decode(rawBuf));
+    body = JSON.parse(new TextDecoder().decode(raw));
   } catch {
-    return textJson(400, { ok: false, message: "Bad JSON" });
+    return badRequest("Bad JSON");
   }
 
-  const type = String(payload?.eventType || "");
-  const eventId = String(payload?.eventId || "");
+  const eventId = typeof body?.eventId === "string" ? body.eventId : "";
+  if (!eventId) return badRequest("Missing eventId");
 
-  // 测试用例要求：eventId 为空时 400
-  if (!eventId) {
-    return textJson(400, { ok: false, message: "Missing eventId" });
-  }
-
-  // 其它字段你可按需校验；测试只要求能返回 200，并忽略未知字段
-  return textJson(200, {
+  return ok({
     ok: true,
     message: "Webhook verified successfully",
-    namespace: payload?.namespace ?? null,
-    productId: payload?.productId ?? null,
+    namespace: body?.namespace ?? null,
+    productId: body?.productId ?? null,
   });
 }
 
+/* ---------- Worker 入口 ---------- */
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET,POST,OPTIONS",
-          "access-control-allow-headers": "*",
-        },
-      });
+      return scrubHeaders(
+        new Response(null, {
+          headers: {
+            "access-control-allow-origin": "*",
+            "access-control-allow-methods": "GET,POST,OPTIONS",
+            "access-control-allow-headers": "*",
+          },
+        })
+      );
     }
-    const url = new URL(req.url);
-    if (req.method === "POST" && url.pathname === "/verify") {
-      return handleVerify(req, env);
+
+    const { pathname } = new URL(req.url);
+    if (pathname === "/verify" && req.method === "POST") {
+      return await handleVerify(req, env);
     }
-    // 健康检查：浏览器打开才会看到的这句
-    return textJson(200, { ok: true, message: "Verify endpoint is alive" });
+
+    // 健康检查（GET/POST 任意方法都回200）
+    return ok({ ok: true, message: "Verify endpoint is alive" });
   },
 };
