@@ -1,131 +1,149 @@
 export interface Env {
-  WEBHOOK_SECRET_S4631?: string; // hex
+  // 例如：WEBHOOK_SECRET_S4631= "<hex>"
+  // 以后如果新增 S9xxx，只需在 Cloudflare 添加 WEBHOOK_SECRET_S9xxx，代码无需改动
+  [k: `WEBHOOK_SECRET_${string}`]: string | undefined;
 }
 
-const ALLOWED_DRIFT_MS = 5 * 60 * 1000; // 5分钟时间窗
+const ALLOWED_DRIFT_MS = 5 * 60 * 1000; // 5分钟窗口
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
-    if (req.method === 'OPTIONS') {
-      return cors(new Response(null, { status: 204 }));
+    // 预检
+    if (req.method === "OPTIONS") {
+      return withCors(new Response(null, { status: 204 }));
     }
-    if (req.method !== 'POST') {
-      return cors(json({ ok: false, message: 'Method Not Allowed' }, 405));
+    if (req.method !== "POST") {
+      return withCors(json({ ok: false, message: "Method Not Allowed" }, 405));
     }
 
-    // 1) 原始字节 + 文本
-    const raw = await req.arrayBuffer();
+    // 原始字节 + 文本（签名必须基于原始字节）
+    const raw = new Uint8Array(await req.arrayBuffer());
     const bodyText = new TextDecoder().decode(raw);
 
-    // 2) 先校验签名（失败直接 401）
-    const sigHeader = req.headers.get('X-Signature') || '';
-    const tsHeader = req.headers.get('X-Timestamp') || '';
-    const corId = req.headers.get('X-Epic-Correlation-ID') || undefined;
+    // —— 先校验签名（失败直接 401）——
+    const sigHeader = req.headers.get("X-Signature") || "";
+    const tsHeader  = req.headers.get("X-Timestamp") || "";
+    const corrId    = req.headers.get("X-Epic-Correlation-ID") || undefined;
 
     if (!tsHeader || !isFreshTimestamp(tsHeader, ALLOWED_DRIFT_MS)) {
-      return cors(json({ ok: false, message: 'Invalid or missing X-Timestamp' }, 401, corId));
+      return withCors(json({ ok: false, message: "Invalid or missing X-Timestamp" }, 401, corrId));
+    }
+    const sigOk = await verifyEpicSignature(sigHeader, raw, env);
+    if (!sigOk) {
+      return withCors(json({ ok: false, message: "Invalid or missing X-Signature" }, 401, corrId));
     }
 
-    const okSig = await verifyEpicSignature(sigHeader, new Uint8Array(raw), env);
-    if (!okSig) {
-      return cors(json({ ok: false, message: 'Invalid or missing X-Signature' }, 401, corId));
-    }
-
-    // 3) 业务解析
+    // —— 再做业务解析 —— 
     let body: any = null;
     try { body = JSON.parse(bodyText); }
-    catch { return cors(json({ ok: false, message: 'Invalid JSON' }, 400, corId)); }
+    catch { return withCors(json({ ok: false, message: "Invalid JSON" }, 400, corrId)); }
 
-    const { eventType } = body || {};
-    const hasEventId = typeof body?.eventId === 'string' && body.eventId.length > 0;
+    const eventType = body?.eventType;
+    const hasEventId = typeof body?.eventId === "string" && body.eventId.length > 0;
 
-    // 4) 针对验证测试的最小实现
     switch (eventType) {
-      case 'event-v1-acknowledge':
-      case 'event-v1-player-id-verification':
-      case 'event-v1-fulfill':
-      case 'event-v1-clawback': {
+      case "event-v1-acknowledge":
+      case "event-v1-player-id-verification":
+      case "event-v1-fulfill":
+      case "event-v1-clawback": {
         if (!hasEventId) {
-          return cors(json({ ok: false, message: 'Missing eventId' }, 400, corId));
+          return withCors(json({ ok: false, message: "Missing eventId" }, 400, corrId));
         }
-        return cors(json({
+        // 最小实现：返回验证成功
+        return withCors(json({
           ok: true,
-          message: 'Webhook verified successfully',
+          message: "Webhook verified successfully",
           namespace: body.namespace ?? null,
-          productId: body.productId
-        }, 200, corId));
+          productId: body.productId ?? null
+        }, 200, corrId));
       }
+
       default:
-        return cors(json({ ok: false, message: 'Unsupported eventType' }, 400, corId));
+        // 未支持的事件类型：明确 400
+        return withCors(json({ ok: false, message: "Unsupported eventType" }, 400, corrId));
     }
-  },
+  }
 };
 
-/** ======= 工具函数 ======= */
+/* ================= 工具函数 ================= */
 
-function cors(res: Response): Response;
-function cors(res: Response, status?: number): Response;
-function cors(resOrBody: any, status?: number): Response {
+function withCors(res: Response): Response;
+function withCors(resOrBody: any, status?: number): Response;
+function withCors(resOrBody: any, status?: number): Response {
   const res = resOrBody instanceof Response ? resOrBody : new Response(resOrBody, { status });
   const headers = new Headers(res.headers);
-  headers.set('access-control-allow-origin', '*');
-  headers.set('access-control-allow-methods', 'GET,POST,OPTIONS');
-  headers.set('access-control-allow-headers', '*');
-  headers.set('cache-control', 'no-store');
-  // ⚠️ 不要把请求头（尤其 X-Signature）回显到响应
+
+  // ⚠️ 强制确保响应里**绝不**含有这些头
+  headers.delete("x-signature");
+  headers.delete("X-Signature");
+  headers.delete("x-timestamp");
+  headers.delete("X-Timestamp");
+
+  headers.set("access-control-allow-origin", "*");
+  headers.set("access-control-allow-methods", "GET,POST,OPTIONS");
+  headers.set("access-control-allow-headers", "*");
+  headers.set("cache-control", "no-store");
+
   return new Response(res.body, { status: res.status, headers });
 }
 
 function json(obj: unknown, status = 200, correlationId?: string): Response {
   const headers = new Headers();
-  headers.set('content-type', 'application/json; charset=utf-8');
-  if (correlationId) headers.set('x-epic-correlation-id', correlationId);
+  headers.set("content-type", "application/json; charset=utf-8");
+  if (correlationId) headers.set("x-epic-correlation-id", correlationId);
+
+  // 再保险：即便调用方传了这些头，也从响应中移除
+  headers.delete("x-signature");
+  headers.delete("X-Signature");
+  headers.delete("x-timestamp");
+  headers.delete("X-Timestamp");
+
   return new Response(JSON.stringify(obj), { status, headers });
 }
 
 function isFreshTimestamp(tsIso: string, driftMs: number): boolean {
   const t = Date.parse(tsIso);
   if (Number.isNaN(t)) return false;
-  const now = Date.now();
-  return Math.abs(now - t) <= driftMs;
+  return Math.abs(Date.now() - t) <= driftMs;
 }
 
 async function verifyEpicSignature(sigHeader: string, raw: Uint8Array, env: Env): Promise<boolean> {
-  // 解析 "S4631=hex"
-  const pairs = sigHeader.split(',').map(s => s.trim()).filter(Boolean);
-  if (pairs.length === 0) return false;
+  // 解析形如 "S4631=<hex>,S9xxx=<hex>"
+  const pairs = sigHeader.split(",").map(s => s.trim()).filter(Boolean);
+  if (!pairs.length) return false;
 
-  const map: Record<string, string> = {};
+  // 逐个 KID 尝试：读取同名 env 变量 WEBHOOK_SECRET_<KID> 做 HMAC-SHA256
   for (const p of pairs) {
-    const [k, v] = p.split('=');
-    if (!k || !v) continue;
-    map[k] = v;
+    const [kid, sigHex] = p.split("=");
+    if (!kid || !sigHex) continue;
+
+    const envKey = `WEBHOOK_SECRET_${kid}` as const;
+    const secretHex = env[envKey];
+    if (!secretHex) continue;
+
+    const ok = await hmacEquals(raw, hexToBytes(secretHex), hexToBytes(sigHex));
+    if (ok) return true; // 有任何一把 key 验证通过即可
   }
-
-  // 仅支持你这把新 key（KID=S4631）
-  const secretHex = env.WEBHOOK_SECRET_S4631;
-  const sigHex = map['S4631'];
-
-  if (!secretHex || !sigHex) return false;
-  return await hmacEquals(raw, secretHex, sigHex);
+  return false;
 }
 
-async function hmacEquals(raw: Uint8Array, secretHex: string, sigHex: string): Promise<boolean> {
-  const keyBytes = hexToBytes(secretHex);
-  const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, raw));
-  return bytesEq(mac, hexToBytes(sigHex));
+async function hmacEquals(data: Uint8Array, keyBytes: Uint8Array, sigBytes: Uint8Array): Promise<boolean> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, data));
+  return constantTimeEqual(mac, sigBytes);
 }
 
 function hexToBytes(hex: string): Uint8Array {
-  const s = hex.trim().toLowerCase().replace(/^0x/, '');
-  if (s.length % 2 !== 0) throw new Error('bad hex');
+  const s = hex.trim().toLowerCase().replace(/^0x/, "");
+  if (s.length % 2 !== 0) throw new Error("bad hex");
   const out = new Uint8Array(s.length / 2);
-  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.substr(i * 2, 2), 16);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.slice(i * 2, i * 2 + 2), 16);
   return out;
 }
 
-function bytesEq(a: Uint8Array, b: Uint8Array): boolean {
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
